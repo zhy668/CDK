@@ -1,0 +1,86 @@
+name = "cdk"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+# 单Worker架构：同时处理静态文件和API请求
+# 静态文件已嵌入到Worker代码中
+
+[env.production]
+name = "cdk"
+routes = [
+  { pattern = "5466888.xyz/*", zone_name = "5466888.xyz" }
+]
+
+[env.development]
+name = "cdk-dev"
+
+# KV Namespaces
+# 注意：请在 Cloudflare Dashboard 中配置 KV 绑定，而不是在这里
+# 1. 创建 KV 命名空间：CDK
+# 2. 在 Worker Settings → Variables → KV Namespace Bindings 中添加绑定
+# 3. Variable name: CDK
+# 4. KV namespace: 选择您创建的 CDK
+
+# KV 绑定配置 - 命令行部署时需要填入实际ID
+# 界面部署时会自动配置，无需手动填写
+# [[kv_namespaces]]
+# binding = "CDK"
+# id = "your-actual-kv-namespace-id"
+# preview_id = "your-actual-preview-kv-namespace-id"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+# Turnstile 默认配置（可在 Dashboard 中覆盖）
+TURNSTILE_ENABLED = "false"
+TURNSTILE_SITE_KEY = ""
+TURNSTILE_SECRET_KEY = ""
+# LinuxDoConnect OAuth 配置（必须在 Dashboard 中设置真实值）
+LINUXDO_CLIENT_ID = ""
+LINUXDO_CLIENT_SECRET = ""
+LINUXDO_REDIRECT_URI = ""
+# 管理员用户名列表（逗号分隔，例如: "admin,user1,user2"）
+ADMIN_USERNAMES = "zhy669"
+
+# 环境配置
+[env.production.vars]
+ENVIRONMENT = "production"
+# 生产环境 Turnstile 配置（可在 Dashboard 中覆盖）
+TURNSTILE_ENABLED = "false"
+TURNSTILE_SITE_KEY = ""
+TURNSTILE_SECRET_KEY = ""
+# LinuxDoConnect OAuth 配置（必须在 Dashboard 中设置真实值）
+LINUXDO_CLIENT_ID = ""
+LINUXDO_CLIENT_SECRET = ""
+LINUXDO_REDIRECT_URI = ""
+# 管理员用户名列表（逗号分隔，例如: "admin,user1,user2"）
+ADMIN_USERNAMES = "zhy669"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+# 开发环境 Turnstile 配置（可在 Dashboard 中覆盖）
+TURNSTILE_ENABLED = "false"
+TURNSTILE_SITE_KEY = ""
+TURNSTILE_SECRET_KEY = ""
+# LinuxDoConnect OAuth 配置（必须在 Dashboard 中设置真实值）
+LINUXDO_CLIENT_ID = ""
+LINUXDO_CLIENT_SECRET = ""
+LINUXDO_REDIRECT_URI = ""
+# 管理员用户名列表（逗号分隔，例如: "admin,user1,user2"）
+ADMIN_USERNAMES = "zhy669"
+
+# 重要说明：
+# 1. 上述为默认值，防止自动部署时丢失环境变量
+# 2. 在 Cloudflare Dashboard → Worker Settings → Variables 中设置真实值
+# 3. Dashboard 中的设置会覆盖 wrangler.toml 中的默认值
+# 4. 这样既保护了配置，又支持自动部署
+#
+# LinuxDoConnect OAuth 配置说明：
+# - LINUXDO_CLIENT_ID: 在 Linux.do 申请的应用 Client ID
+# - LINUXDO_CLIENT_SECRET: 在 Linux.do 申请的应用 Client Secret (敏感信息,必须在 Dashboard 中设置)
+# - LINUXDO_REDIRECT_URI: OAuth 回调地址,例如: https://your-domain.com/api/auth/callback
+#
+# 管理员配置说明：
+# - ADMIN_USERNAMES: 管理员用户名列表,逗号分隔,例如: "admin,user1,user2"
+# - 管理员可以查看用户列表、封禁/解禁用户、查看用户统计
+# - 管理员状态由后端 API 返回,前端无需配置,更加安全

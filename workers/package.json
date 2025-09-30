@@ -1,0 +1,21 @@
+{
+  "name": "cdk-api",
+  "version": "1.0.0",
+  "description": "CDK API - Cloudflare Workers backend for card distribution system",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run build:all && wrangler deploy",
+    "deploy:prod": "npm run build:all && wrangler deploy --env production",
+    "build": "tsc",
+    "build:static": "node scripts/build-static.js",
+    "build:all": "npm run build:static && npm run build",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "typescript": "^5.5.4",
+    "wrangler": "^3.78.2"
+  },
+  "dependencies": {}
+}

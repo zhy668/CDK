@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDK - 在线卡密分发系统</title>
+    <link rel="stylesheet" href="styles/main.css?v=3.2">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <h1>CDK 卡密分发系统</h1>
+                </div>
+                <div class="nav-menu">
+                    <button id="nav-home" class="nav-btn" style="display: none;">主页</button>
+                    <button id="nav-admin" class="nav-btn" style="display: none;">管理员</button>
+                    <div id="nav-user-info" class="user-info">
+                        <!-- User info will be injected here by auth.js -->
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Auth Error Message -->
+        <div id="auth-error" class="auth-error" style="display: none;"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Login Page -->
+            <div id="login-page" class="page">
+                <div class="login-container">
+                    <div class="login-card">
+                        <div class="login-header">
+                            <h2>欢迎使用 CDK 卡密分发系统</h2>
+                            <p>请使用 Linux.do 账号登录</p>
+                        </div>
+                        <div class="login-body">
+                            <div class="login-icon">
+                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <div id="login-user-info" class="login-user-info">
+                                <!-- Login button will be injected here by auth.js -->
+                            </div>
+                            <div class="login-footer">
+                                <p class="login-hint">登录后即可创建和管理卡密项目</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Page -->
+            <div id="home-page" class="page">
+                <div class="hero">
+                    <h2>欢迎使用 CDK 卡密分发系统</h2>
+                    <p>简单、安全、高效的在线卡密分发解决方案</p>
+                    <div class="hero-actions">
+                        <button id="btn-create-project" class="btn btn-primary">创建新项目</button>
+                        <button id="btn-manage-projects" class="btn btn-secondary">管理项目</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Project Page -->
+            <div id="create-page" class="page">
+                <div class="page-header">
+                    <h2>创建新项目</h2>
+                    <button id="btn-back-home" class="btn btn-secondary">返回首页</button>
+                </div>
+                
+                <form id="create-form" class="form-container">
+                    <div class="form-group">
+                        <label for="project-name">项目名称 *</label>
+                        <input type="text" id="project-name" required maxlength="50" 
+                               placeholder="请输入项目名称（1-50字符）">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-password">项目密码 *</label>
+                        <input type="password" id="project-password" required minlength="6" maxlength="20"
+                               placeholder="请输入项目密码（6-20字符）">
+                        <small class="form-hint">用户领取卡密时需要输入的密码</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-password">管理密码 *</label>
+                        <input type="password" id="admin-password" required minlength="6" maxlength="20"
+                               placeholder="请输入管理密码（6-20字符）">
+                        <small class="form-hint">用于编辑和删除项目的管理密码</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-description">项目描述</label>
+                        <textarea id="project-description" maxlength="200" rows="3"
+                                  placeholder="请输入项目描述（可选，最多200字符）"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cards-input">卡密内容 *</label>
+                        <div class="cards-input-container">
+                            <div class="input-format-tabs">
+                                <button type="button" class="tab-btn active" data-format="text">文本格式</button>
+                                <button type="button" class="tab-btn" data-format="csv">CSV格式</button>
+                                <button type="button" class="tab-btn" data-format="json">JSON格式</button>
+                            </div>
+                            <textarea id="cards-input" rows="10" required
+                                      placeholder="请输入卡密内容，然后点击"导入"按钮"></textarea>
+                            <div class="input-options">
+                                <div class="input-tools">
+                                    <button type="button" class="btn-tool" onclick="importCards()">
+                                        📥 导入
+                                    </button>
+                                    <button type="button" class="btn-tool" onclick="clearCards()">
+                                        🗑️ 清空
+                                    </button>
+                                    <span class="cards-count" id="cardsCount">0 条卡密</span>
+                                </div>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="remove-duplicates" checked>
+                                    自动去重
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 导入的卡密列表 -->
+                        <div id="imported-cards-list" class="imported-cards-list" style="display: none;">
+                            <div class="list-header">
+                                <h4>已导入的卡密 (<span id="imported-count">0</span> 条)</h4>
+                                <button type="button" class="btn-tool" onclick="clearImportedCards()">
+                                    🗑️ 清空列表
+                                </button>
+                            </div>
+                            <div id="cards-container" class="cards-container">
+                                <!-- 卡密列表将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 项目创建不需要 Turnstile 验证 -->
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="btn-create-project">创建项目</button>
+                        <button type="button" id="btn-clear-form" class="btn btn-secondary">清空表单</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Manage Projects Page -->
+            <div id="manage-page" class="page">
+                <div class="page-header">
+                    <h2>项目管理</h2>
+                    <button id="btn-back-home-2" class="btn btn-secondary">返回首页</button>
+                </div>
+
+                <div id="projects-container">
+                    <div id="projects-loading" class="loading">加载中...</div>
+                    <div id="projects-list" class="projects-grid"></div>
+                    <div id="projects-empty" class="empty-state" style="display: none;">
+                        <p>暂无项目</p>
+                        <button id="btn-create-first" class="btn btn-primary">创建第一个项目</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Claim Page -->
+            <div id="claim-page" class="page">
+                <div class="claim-container">
+                    <div id="password-form" class="password-form">
+                        <h2>请输入项目密码</h2>
+                        <form id="verify-form">
+                            <div class="form-group">
+                                <input type="password" id="claim-password" required
+                                       placeholder="请输入项目密码">
+                            </div>
+
+                            <!-- Turnstile 验证组件 -->
+                            <div id="claim-turnstile-container" class="turnstile-container">
+                                <label>安全验证</label>
+                                <div id="claim-turnstile-widget" class="turnstile-widget"></div>
+                                <div class="form-hint">请完成安全验证以继续</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">验证密码</button>
+                        </form>
+                    </div>
+
+                    <div id="claim-result" class="claim-result" style="display: none;">
+                        <div id="claim-success" class="result-success" style="display: none;">
+                            <h2>领取成功！</h2>
+                            <div class="card-content">
+                                <label>您的卡密：</label>
+                                <div id="claimed-card" class="card-display"></div>
+                                <button id="btn-copy-card" class="btn btn-secondary">复制卡密</button>
+                            </div>
+                        </div>
+
+                        <div id="claim-error" class="result-error" style="display: none;">
+                            <h2>领取失败</h2>
+                            <p id="error-message"></p>
+                            <button id="btn-retry" class="btn btn-primary">重新尝试</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Page -->
+            <div id="admin-page" class="page">
+                <div class="page-header">
+                    <h2>管理员面板</h2>
+                </div>
+
+                <div class="admin-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="admin-total-users">0</div>
+                        <div class="stat-label">总用户数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="admin-active-users">0</div>
+                        <div class="stat-label">活跃用户</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="admin-banned-users">0</div>
+                        <div class="stat-label">封禁用户</div>
+                    </div>
+                </div>
+
+                <div class="users-section">
+                    <h3>用户列表</h3>
+                    <div id="users-loading" class="loading">加载中...</div>
+                    <div id="users-list" class="users-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>处理中...</p>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js?v=3.0"></script>
+    <script src="js/utils.js?v=3.0"></script>
+    <script src="js/api.js?v=3.0"></script>
+    <script src="js/auth.js?v=3.0"></script>
+    <script src="js/turnstile.js?v=3.0"></script>
+    <script src="js/app.js?v=3.0"></script>
+</body>
+</html>
