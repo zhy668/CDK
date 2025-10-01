@@ -186,6 +186,10 @@ export const VALIDATION_SCHEMAS = {
   },
   
   ADD_CARDS: {
+    adminPassword: {
+      required: true,
+      minLength: 1
+    },
     cards: {
       required: true,
       custom: (value: string[]) => {

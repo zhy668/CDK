@@ -960,12 +960,8 @@ body {
 
 /* ==================== Admin Panel Styles ==================== */
 
-/* 给管理员页面添加明显的背景颜色 */
 #admin-page {
-    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%) !important;
-    min-height: 100vh;
-    padding: 2rem !important;
-    border: 3px solid #2196f3 !important;
+    padding: 2rem;
 }
 
 .admin-stats {
@@ -976,12 +972,12 @@ body {
 }
 
 .stat-card {
-    background: #ffeb3b !important;
+    background: var(--card-bg);
     padding: 1.5rem;
     border-radius: var(--border-radius);
     text-align: center;
-    border: 2px solid #ff9800 !important;
-    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 .stat-card .stat-value {
@@ -997,11 +993,11 @@ body {
 }
 
 .users-section {
-    background: #e8f5e8 !important;
+    background: var(--card-bg);
     padding: 1.5rem;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
-    border: 2px solid #4caf50 !important;
+    border: 1px solid var(--border-color);
 }
 
 .users-section h3 {
@@ -1020,11 +1016,11 @@ body {
     grid-template-columns: auto 1fr auto;
     gap: 1rem;
     padding: 1rem;
-    border: 2px solid #9c27b0 !important;
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     align-items: center;
-    background: #f3e5f5 !important;
-    box-shadow: 0 2px 4px rgba(156, 39, 176, 0.2) !important;
+    background: var(--card-bg);
+    box-shadow: var(--shadow);
 }
 
 .user-card.banned {
@@ -1104,4 +1100,168 @@ body {
     .user-actions {
         justify-content: center;
     }
+}
+
+/* ==================== Edit Project Modal Styles ==================== */
+
+.modal-large {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.edit-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.edit-section h4 {
+    margin-bottom: 1rem;
+    color: var(--dark-color);
+    font-size: 1.1rem;
+}
+
+.edit-section h5 {
+    margin-bottom: 0.75rem;
+    color: var(--dark-color);
+    font-size: 1rem;
+}
+
+.status-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.cards-stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: var(--border-radius);
+}
+
+.cards-stats span {
+    color: var(--secondary-color);
+}
+
+.cards-stats strong {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.add-cards-section {
+    margin-bottom: 1.5rem;
+}
+
+.add-cards-section textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: monospace;
+    resize: vertical;
+    margin-bottom: 0.75rem;
+}
+
+.edit-cards-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.card-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-item:last-child {
+    border-bottom: none;
+}
+
+.card-item.claimed {
+    background: #f8f9fa;
+    opacity: 0.7;
+}
+
+.card-content {
+    flex: 1;
+    font-family: monospace;
+    color: var(--dark-color);
+}
+
+.card-status {
+    margin-right: 1rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.card-status.available {
+    background: #d4edda;
+    color: #155724;
+}
+
+.card-status.claimed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
 }

@@ -237,6 +237,52 @@
             </div>
         </main>
 
+        <!-- Edit Project Modal -->
+        <div id="edit-project-modal" class="modal" style="display: none;">
+            <div class="modal-content modal-large">
+                <span class="modal-close" onclick="app.closeEditProjectModal()">&times;</span>
+                <h3>编辑项目</h3>
+                <div id="edit-project-content">
+                    <!-- 项目基本信息 -->
+                    <div class="edit-section">
+                        <h4>项目状态</h4>
+                        <div class="status-toggle">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="project-status-toggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span id="project-status-text">项目已启用</span>
+                        </div>
+                    </div>
+
+                    <!-- 卡密管理 -->
+                    <div class="edit-section">
+                        <h4>卡密管理</h4>
+                        <div class="cards-stats">
+                            <span>总卡密数: <strong id="edit-total-cards">0</strong></span>
+                            <span>已领取: <strong id="edit-claimed-cards">0</strong></span>
+                            <span>剩余: <strong id="edit-remaining-cards">0</strong></span>
+                        </div>
+
+                        <!-- 添加卡密 -->
+                        <div class="add-cards-section">
+                            <h5>添加新卡密</h5>
+                            <textarea id="new-cards-input" placeholder="每行一个卡密" rows="5"></textarea>
+                            <button class="btn btn-primary" onclick="app.addNewCards()">添加卡密</button>
+                        </div>
+
+                        <!-- 卡密列表 -->
+                        <div class="cards-list-section">
+                            <h5>卡密列表</h5>
+                            <div id="edit-cards-list" class="edit-cards-list">
+                                <!-- 卡密列表将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay" style="display: none;">
             <div class="loading-spinner"></div>

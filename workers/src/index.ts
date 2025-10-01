@@ -324,6 +324,35 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         return await projectHandler.addCards(request, projectId, validationResult.data);
       }
 
+      // Delete card route
+      const deleteCardMatch = path.match(/^\/api\/projects\/([^\/]+)\/cards\/([^\/]+)$/);
+      if (deleteCardMatch && method === 'DELETE') {
+        const projectId = deleteCardMatch[1];
+        const cardId = deleteCardMatch[2];
+        // 应用限制
+        const rateLimitResult = await applyMiddleware([
+          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+        ], request);
+        if (rateLimitResult) return rateLimitResult;
+
+        // 从请求体中读取管理密码
+        const data = await request.json() as any;
+        return await projectHandler.deleteCard(request, projectId, { ...data, cardId });
+      }
+
+      // Toggle project status route
+      const toggleStatusMatch = path.match(/^\/api\/projects\/([^\/]+)\/toggle-status$/);
+      if (toggleStatusMatch && method === 'POST') {
+        const projectId = toggleStatusMatch[1];
+        // 应用限制
+        const rateLimitResult = await applyMiddleware([
+          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+        ], request);
+        if (rateLimitResult) return rateLimitResult;
+
+        return await projectHandler.toggleProjectStatus(request, projectId);
+      }
+
       // Project stats routes
       const statsMatch = path.match(/^\/api\/projects\/([^\/]+)\/stats$/);
       if (statsMatch && method === 'POST') {

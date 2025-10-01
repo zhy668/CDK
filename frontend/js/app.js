@@ -8,6 +8,7 @@ console.log('🚀 CDK App v3.0 已加载 - LinuxDoConnect 认证版本');
 class CDKApp {
     constructor() {
         this.currentProject = null;
+        this.currentEditProject = null;
         this.projects = [];
         this.importedCards = [];
         this.authRequired = true; // 全站需要认证
@@ -614,22 +615,182 @@ class CDKApp {
     }
 
     async editProject(projectId) {
-        // 简单的编辑功能，可以扩展
         const project = this.projects.find(p => p.id === projectId);
         if (!project) return;
 
-        const newName = prompt('请输入新的项目名称:', project.name);
-        if (newName && newName.trim() && newName !== project.name) {
-            try {
-                const result = await API.projects.update(projectId, { name: newName.trim() });
-                if (result.success) {
-                    showToast('项目更新成功', 'success');
-                    this.loadProjects();
-                }
-            } catch (error) {
-                // 错误已在 API 层处理
-            }
+        // 先验证管理密码
+        const adminPassword = prompt(`请输入项目 "${project.name}" 的管理密码：`);
+        if (!adminPassword) {
+            return; // 用户取消
         }
+
+        try {
+            // 验证管理密码
+            const verifyResult = await API.projects.verifyAdminPassword(projectId, adminPassword);
+            if (!verifyResult.success || !verifyResult.data.valid) {
+                showToast('管理密码错误', 'error');
+                return;
+            }
+
+            // 密码正确，显示编辑模态框
+            this.currentEditProject = { ...project, adminPassword };
+            await this.showEditProjectModal(projectId, adminPassword);
+        } catch (error) {
+            showToast(error.message || '验证管理密码失败', 'error');
+        }
+    }
+
+    async showEditProjectModal(projectId, adminPassword) {
+        const modal = $('#edit-project-modal');
+        const project = this.currentEditProject;
+
+        // 设置项目状态开关
+        const statusToggle = $('#project-status-toggle');
+        const statusText = $('#project-status-text');
+        statusToggle.checked = project.isActive;
+        statusText.textContent = project.isActive ? '项目已启用' : '项目已禁用';
+
+        // 添加状态切换事件
+        statusToggle.onchange = async () => {
+            await this.toggleProjectStatus(projectId, statusToggle.checked, adminPassword);
+        };
+
+        // 加载项目统计和卡密列表
+        await this.loadProjectCardsForEdit(projectId, adminPassword);
+
+        // 显示模态框
+        modal.style.display = 'flex';
+    }
+
+    async loadProjectCardsForEdit(projectId, adminPassword) {
+        try {
+            const statsResult = await API.projects.getStats(projectId, adminPassword);
+            if (statsResult.success) {
+                const stats = statsResult.data;
+
+                // 更新统计信息
+                $('#edit-total-cards').textContent = stats.totalCards;
+                $('#edit-claimed-cards').textContent = stats.claimedCards;
+                $('#edit-remaining-cards').textContent = stats.remainingCards;
+
+                // 显示卡密列表
+                this.displayEditCardsList(stats.claimHistory, projectId, adminPassword);
+            }
+        } catch (error) {
+            showToast(error.message || '加载卡密列表失败', 'error');
+        }
+    }
+
+    displayEditCardsList(claimHistory, projectId, adminPassword) {
+        const listEl = $('#edit-cards-list');
+
+        if (!claimHistory || claimHistory.length === 0) {
+            listEl.innerHTML = '<p class="empty-state">暂无卡密</p>';
+            return;
+        }
+
+        const html = claimHistory.map(record => {
+            const isClaimed = !!record.claimedAt;
+            const statusClass = isClaimed ? 'claimed' : 'available';
+            const statusText = isClaimed ? '已领取' : '未领取';
+            const deleteButton = isClaimed
+                ? ''
+                : `<button class="btn btn-danger btn-sm" onclick="app.deleteCard('${projectId}', '${record.id}', '${adminPassword}')">删除</button>`;
+
+            return `
+                <div class="card-item ${statusClass}">
+                    <div class="card-content">${record.cardContent}</div>
+                    <span class="card-status ${statusClass}">${statusText}</span>
+                    <div class="card-actions">
+                        ${deleteButton}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        listEl.innerHTML = html;
+    }
+
+    async addNewCards() {
+        const textarea = $('#new-cards-input');
+        const cardsText = textarea.value.trim();
+
+        if (!cardsText) {
+            showToast('请输入卡密', 'error');
+            return;
+        }
+
+        const cards = cardsText.split('\n').map(c => c.trim()).filter(c => c);
+        if (cards.length === 0) {
+            showToast('请输入有效的卡密', 'error');
+            return;
+        }
+
+        const { id: projectId, adminPassword } = this.currentEditProject;
+
+        try {
+            const result = await API.projects.addCards(projectId, {
+                cards,
+                adminPassword,
+                removeDuplicates: true
+            });
+
+            if (result.success) {
+                showToast(`成功添加 ${result.data.added} 个卡密`, 'success');
+                textarea.value = '';
+                // 重新加载卡密列表
+                await this.loadProjectCardsForEdit(projectId, adminPassword);
+                // 重新加载项目列表以更新统计
+                await this.loadProjects();
+            }
+        } catch (error) {
+            showToast(error.message || '添加卡密失败', 'error');
+        }
+    }
+
+    async deleteCard(projectId, cardId, adminPassword) {
+        if (!confirm('确定要删除这个卡密吗？')) {
+            return;
+        }
+
+        try {
+            const result = await API.projects.deleteCard(projectId, cardId, adminPassword);
+            if (result.success) {
+                showToast('卡密删除成功', 'success');
+                // 重新加载卡密列表
+                await this.loadProjectCardsForEdit(projectId, adminPassword);
+                // 重新加载项目列表以更新统计
+                await this.loadProjects();
+            }
+        } catch (error) {
+            showToast(error.message || '删除卡密失败', 'error');
+        }
+    }
+
+    async toggleProjectStatus(projectId, isActive, adminPassword) {
+        try {
+            const result = await API.projects.toggleStatus(projectId, isActive, adminPassword);
+            if (result.success) {
+                const statusText = $('#project-status-text');
+                statusText.textContent = isActive ? '项目已启用' : '项目已禁用';
+                showToast(result.data.message, 'success');
+                // 更新当前编辑项目的状态
+                this.currentEditProject.isActive = isActive;
+                // 重新加载项目列表
+                await this.loadProjects();
+            }
+        } catch (error) {
+            // 恢复开关状态
+            const statusToggle = $('#project-status-toggle');
+            statusToggle.checked = !isActive;
+            showToast(error.message || '更新项目状态失败', 'error');
+        }
+    }
+
+    closeEditProjectModal() {
+        const modal = $('#edit-project-modal');
+        modal.style.display = 'none';
+        this.currentEditProject = null;
     }
 
     async deleteProject(projectId) {
@@ -1189,15 +1350,10 @@ CDKApp.prototype.loadAdminData = async function() {
 };
 
 CDKApp.prototype.displayUsersList = function(users) {
-    console.log('displayUsersList called with', users.length, 'users');
     const usersListEl = $('#users-list');
     const usersLoadingEl = $('#users-loading');
 
-    console.log('usersListEl:', usersListEl);
-    console.log('usersLoadingEl:', usersLoadingEl);
-
     if (!usersListEl) {
-        console.error('usersListEl not found');
         return;
     }
 
@@ -1245,11 +1401,7 @@ CDKApp.prototype.displayUsersList = function(users) {
             </div>
         `;
     }).join('');
-    console.log('Generated HTML length:', html.length);
-    console.log('Generated HTML preview:', html.substring(0, 200));
     usersListEl.innerHTML = html;
-    console.log('displayUsersList completed');
-    console.log('usersListEl after innerHTML:', usersListEl);
 };
 
 CDKApp.prototype.banUser = async function(userId, username) {

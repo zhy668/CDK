@@ -128,6 +128,16 @@ const API = {
             return apiClient.post(`/projects/${id}/cards`, cardsData);
         },
 
+        // 删除卡密
+        async deleteCard(projectId, cardId, adminPassword) {
+            return apiClient.delete(`/projects/${projectId}/cards/${cardId}`, { adminPassword });
+        },
+
+        // 切换项目状态（启用/禁用）
+        async toggleStatus(projectId, isActive, adminPassword) {
+            return apiClient.post(`/projects/${projectId}/toggle-status`, { isActive, adminPassword });
+        },
+
         // 获取项目统计
         async getStats(id, adminPassword) {
             return apiClient.post(`/projects/${id}/stats`, { adminPassword });
@@ -234,7 +244,10 @@ const wrappedAPI = {
         update: withErrorHandling(API.projects.update),
         delete: withErrorHandling(API.projects.delete),
         addCards: withErrorHandling(API.projects.addCards),
-        getStats: withErrorHandling(API.projects.getStats)
+        deleteCard: withErrorHandling(API.projects.deleteCard),
+        toggleStatus: withErrorHandling(API.projects.toggleStatus),
+        getStats: withErrorHandling(API.projects.getStats),
+        verifyAdminPassword: withErrorHandling(API.projects.verifyAdminPassword)
     },
     
     claim: {

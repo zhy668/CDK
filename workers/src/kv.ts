@@ -132,6 +132,32 @@ export class KVService {
     return data ? JSON.parse(data) : null;
   }
 
+  async deleteCard(projectId: string, cardId: string): Promise<boolean> {
+    const card = await this.getCard(projectId, cardId);
+    if (!card) return false;
+
+    // 只能删除未领取的卡密
+    if (card.isClaimed) return false;
+
+    // 删除卡密
+    await this.kv.delete(KV_KEYS.CARD(projectId, cardId));
+
+    // 从项目卡密列表中移除
+    const cardIds = await this.getProjectCards(projectId);
+    const updatedCardIds = cardIds.filter(id => id !== cardId);
+    await this.kv.put(KV_KEYS.PROJECT_CARDS(projectId), JSON.stringify(updatedCardIds));
+
+    // 更新项目总卡密数
+    const project = await this.getProject(projectId);
+    if (project) {
+      await this.updateProject(projectId, {
+        totalCards: updatedCardIds.length
+      });
+    }
+
+    return true;
+  }
+
   async claimCard(projectId: string, cardId: string, ipHash: string, username?: string): Promise<Card | null> {
     const card = await this.getCard(projectId, cardId);
     if (!card || card.isClaimed) return null;

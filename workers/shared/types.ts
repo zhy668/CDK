@@ -38,6 +38,22 @@ export interface VerifyAdminPasswordRequest {
   adminPassword: string;
 }
 
+export interface AddCardsRequest {
+  adminPassword: string;
+  cards: string[];
+  removeDuplicates?: boolean;
+}
+
+export interface DeleteCardRequest {
+  adminPassword: string;
+  cardId: string;
+}
+
+export interface ToggleProjectStatusRequest {
+  adminPassword: string;
+  isActive: boolean;
+}
+
 export interface TurnstileVerifyRequest {
   token: string;
   remoteip?: string;

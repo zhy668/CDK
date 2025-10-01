@@ -3,7 +3,7 @@
  */
 
 import { KVService } from '../kv';
-import { CreateProjectRequest, UpdateProjectRequest, ApiResponse, VALIDATION } from '../../shared/types';
+import { CreateProjectRequest, UpdateProjectRequest, AddCardsRequest, DeleteCardRequest, ToggleProjectStatusRequest, ApiResponse, VALIDATION } from '../../shared/types';
 import { validateProjectName, validateProjectPassword, validateProjectDescription, parseCards, removeDuplicateCards } from '../../shared/utils';
 
 export class ProjectHandler {
@@ -214,13 +214,28 @@ export class ProjectHandler {
     }
   }
 
-  async addCards(request: Request, projectId: string, data?: any): Promise<Response> {
+  async addCards(request: Request, projectId: string, data?: AddCardsRequest): Promise<Response> {
     try {
       // 如果没有预解析的数据，则从请求中读取
       if (!data) {
         data = await request.json();
       }
-      const { cards, format = 'text', removeDuplicates = true } = data;
+
+      // 验证管理密码
+      if (!data!.adminPassword) {
+        return this.errorResponse('需要提供管理密码', 400);
+      }
+
+      const project = await this.kvService.getProject(projectId);
+      if (!project) {
+        return this.errorResponse('项目不存在', 404);
+      }
+
+      if (project.adminPassword !== data!.adminPassword) {
+        return this.errorResponse('管理密码错误', 401);
+      }
+
+      const { cards, removeDuplicates = true } = data!;
 
       if (!cards || !Array.isArray(cards) || cards.length === 0) {
         return this.errorResponse('请提供有效的卡密列表', 400);
@@ -242,6 +257,101 @@ export class ProjectHandler {
     } catch (error) {
       console.error('Add cards error:', error);
       return this.errorResponse('添加卡密失败', 500);
+    }
+  }
+
+  async deleteCard(request: Request, projectId: string, data?: DeleteCardRequest): Promise<Response> {
+    try {
+      // 如果没有预解析的数据，则从请求中读取
+      if (!data) {
+        data = await request.json();
+      }
+
+      // 验证管理密码
+      if (!data!.adminPassword) {
+        return this.errorResponse('需要提供管理密码', 400);
+      }
+
+      if (!data!.cardId) {
+        return this.errorResponse('卡密ID不能为空', 400);
+      }
+
+      const project = await this.kvService.getProject(projectId);
+      if (!project) {
+        return this.errorResponse('项目不存在', 404);
+      }
+
+      if (project.adminPassword !== data!.adminPassword) {
+        return this.errorResponse('管理密码错误', 401);
+      }
+
+      // 检查卡密是否已被领取
+      const card = await this.kvService.getCard(projectId, data!.cardId);
+      if (!card) {
+        return this.errorResponse('卡密不存在', 404);
+      }
+
+      if (card.isClaimed) {
+        return this.errorResponse('已领取的卡密不能删除', 400);
+      }
+
+      // 删除卡密
+      const success = await this.kvService.deleteCard(projectId, data!.cardId);
+      if (!success) {
+        return this.errorResponse('删除卡密失败', 500);
+      }
+
+      return this.successResponse({ message: '卡密删除成功' });
+
+    } catch (error) {
+      console.error('Delete card error:', error);
+      return this.errorResponse('删除卡密失败', 500);
+    }
+  }
+
+  async toggleProjectStatus(request: Request, projectId: string, data?: ToggleProjectStatusRequest): Promise<Response> {
+    try {
+      // 如果没有预解析的数据，则从请求中读取
+      if (!data) {
+        data = await request.json();
+      }
+
+      // 验证管理密码
+      if (!data!.adminPassword) {
+        return this.errorResponse('需要提供管理密码', 400);
+      }
+
+      if (typeof data!.isActive !== 'boolean') {
+        return this.errorResponse('isActive必须是布尔值', 400);
+      }
+
+      const project = await this.kvService.getProject(projectId);
+      if (!project) {
+        return this.errorResponse('项目不存在', 404);
+      }
+
+      if (project.adminPassword !== data!.adminPassword) {
+        return this.errorResponse('管理密码错误', 401);
+      }
+
+      // 更新项目状态
+      const updatedProject = await this.kvService.updateProject(projectId, {
+        isActive: data!.isActive,
+        adminPassword: data!.adminPassword
+      });
+
+      if (!updatedProject) {
+        return this.errorResponse('更新项目状态失败', 500);
+      }
+
+      return this.successResponse({
+        project: updatedProject,
+        message: data!.isActive ? '项目已启用' : '项目已禁用'
+      });
+
+    } catch (error) {
+      console.error('Toggle project status error:', error);
+      return this.errorResponse('更新项目状态失败', 500);
     }
   }
 
