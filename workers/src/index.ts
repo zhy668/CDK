@@ -2,7 +2,7 @@
  * CDK API - Cloudflare Workers backend for card distribution system
  */
 
-import { KVService } from './kv';
+import { DatabaseService } from './database';
 import { ProjectHandler } from './handlers/projects';
 import { ClaimHandler } from './handlers/claim';
 import { AuthHandler } from './handlers/auth';
@@ -15,7 +15,8 @@ import { createTurnstileMiddleware, getTurnstileConfig } from './middleware/turn
 import { getStaticAsset } from './static-assets';
 
 export interface Env {
-  CDK: KVNamespace;
+  CDK_DB: D1Database; // D1 数据库绑�?
+  CDK_KV: KVNamespace; // KV 用于 session 存储
   ENVIRONMENT: string;
   ALLOWED_ORIGINS: string;
   API_SECRET_KEY: string;
@@ -29,11 +30,11 @@ export interface Env {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // 创建中间件
+    // 创建中间�?
     const corsMiddleware = createCorsMiddleware();
     const securityMiddleware = createSecurityMiddleware();
 
-    // 中间件链（暂时禁用API密钥验证，简化小项目部署）
+    // 中间件链（暂时禁用API密钥验证，简化小项目部署�?
     const middlewares = [corsMiddleware, securityMiddleware];
 
     // 如果需要启用API密钥验证，取消注释以下代码：
@@ -72,12 +73,12 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         country: request.headers.get('CF-IPCountry')
       });
 
-      // 处理静态文件请求（非API路径）
+      // 处理静态文件请求（非API路径�?
       if (!path.startsWith('/api')) {
-        console.log(`[STATIC] 请求静态文件: ${path}`);
+        console.log(`[STATIC] 请求静态文�? ${path}`);
         const asset = getStaticAsset(path);
         if (asset) {
-          console.log(`[STATIC] 找到静态文件: ${path}, MIME: ${asset.mimeType}`);
+          console.log(`[STATIC] 找到静态文�? ${path}, MIME: ${asset.mimeType}`);
           return new Response(asset.content, {
             headers: {
               'Content-Type': asset.mimeType,
@@ -86,8 +87,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
           });
         }
 
-        // 如果找不到静态文件，返回首页（SPA路由支持）
-        console.log(`[STATIC] 静态文件未找到，返回首页: ${path}`);
+        // 如果找不到静态文件，返回首页（SPA路由支持�?
+        console.log(`[STATIC] 静态文件未找到，返回首�? ${path}`);
         const indexAsset = getStaticAsset('/');
         if (indexAsset) {
           return new Response(indexAsset.content, {
@@ -102,25 +103,37 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       // Initialize services for API requests
       console.log(`[API] 初始化服务，处理API请求: ${path}`);
 
-      // 检查 KV 绑定
-      if (!env.CDK) {
-        console.error('[API] KV 存储未绑定！');
+      // 检查 D1 和 KV 绑定
+      if (!env.CDK_DB) {
+        console.error('[API] D1 数据库未绑定！');
         return new Response(JSON.stringify({
           success: false,
-          error: 'KV storage not configured',
-          message: '请在 Cloudflare Dashboard 中绑定 CDK 命名空间'
+          error: 'D1 database not configured',
+          message: '请在 Cloudflare Dashboard 中绑定 CDK_DB 数据库'
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
       }
 
-      const kvService = new KVService(env.CDK);
-      const sessionService = new SessionService(env.CDK);
-      const projectHandler = new ProjectHandler(kvService);
-      const claimHandler = new ClaimHandler(kvService, env);
-      const adminHandler = new AdminHandler(kvService);
-      const authHandler = new AuthHandler(sessionService, kvService, {
+      if (!env.CDK_KV) {
+        console.error('[API] KV 存储未绑定！');
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'KV storage not configured',
+          message: '请在 Cloudflare Dashboard 中绑定 CDK_KV 命名空间'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const dbService = new DatabaseService(env.CDK_DB);
+      const sessionService = new SessionService(env.CDK_KV);
+      const projectHandler = new ProjectHandler(dbService);
+      const claimHandler = new ClaimHandler(dbService, env);
+      const adminHandler = new AdminHandler(dbService);
+      const authHandler = new AuthHandler(sessionService, dbService, {
         LINUXDO_CLIENT_ID: env.LINUXDO_CLIENT_ID,
         LINUXDO_CLIENT_SECRET: env.LINUXDO_CLIENT_SECRET,
         LINUXDO_REDIRECT_URI: env.LINUXDO_REDIRECT_URI,
@@ -225,7 +238,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         '/api/admin'
       ];
 
-      // 检查是否需要认证
+      // 检查是否需要认�?
       const needsAuth = protectedPaths.some(p => path.startsWith(p));
       let currentSession: any = null;
 
@@ -255,13 +268,13 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         if (method === 'GET') {
           // 应用通用限制
           const middlewareResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
           ], request);
           if (middlewareResult) return middlewareResult;
 
           return await projectHandler.getProjects(request);
         } else if (method === 'POST') {
-          // 创建项目：只需要数据验证，不需要 Turnstile 验证
+          // 创建项目：只需要数据验证，不需�?Turnstile 验证
           const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.CREATE_PROJECT);
           const validationResult = await validationMiddleware(request);
           if (validationResult.response) return validationResult.response;
@@ -276,7 +289,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         const projectId = projectMatch[1];
         if (method === 'GET') {
           const middlewareResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
           ], request);
           if (middlewareResult) return middlewareResult;
 
@@ -284,11 +297,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         } else if (method === 'PUT') {
           // 应用限制
           const rateLimitResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
           ], request);
           if (rateLimitResult) return rateLimitResult;
 
-          // 应用验证中间件
+          // 应用验证中间�?
           const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.UPDATE_PROJECT);
           const validationResult = await validationMiddleware(request);
           if (validationResult.response) return validationResult.response;
@@ -297,7 +310,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         } else if (method === 'DELETE') {
           // 应用限制
           const rateLimitResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
           ], request);
           if (rateLimitResult) return rateLimitResult;
 
@@ -312,11 +325,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         const projectId = cardsMatch[1];
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
-        // 应用验证中间件
+        // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.ADD_CARDS);
         const validationResult = await validationMiddleware(request);
         if (validationResult.response) return validationResult.response;
@@ -331,11 +344,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         const cardId = deleteCardMatch[2];
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
-        // 从请求体中读取管理密码
+        // 从请求体中读取管理密�?
         const data = await request.json() as any;
         return await projectHandler.deleteCard(request, projectId, { ...data, cardId });
       }
@@ -346,7 +359,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
         const projectId = toggleStatusMatch[1];
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
@@ -358,7 +371,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (statsMatch && method === 'POST') {
         const projectId = statsMatch[1];
         const middlewareResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
         ], request);
         if (middlewareResult) return middlewareResult;
 
@@ -369,7 +382,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (path === '/api/verify-admin' && method === 'POST') {
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.PASSWORD_VERIFY)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.PASSWORD_VERIFY)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
@@ -380,11 +393,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (path === '/api/verify' && method === 'POST') {
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.PASSWORD_VERIFY)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.PASSWORD_VERIFY)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
-        // 应用验证中间件
+        // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.VERIFY_PASSWORD);
         const validationResult = await validationMiddleware(request);
         if (validationResult.response) return validationResult.response;
@@ -395,11 +408,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (path === '/api/claim' && method === 'POST') {
         // 应用限制
         const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.CLAIM_CARD)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.CLAIM_CARD)
         ], request);
         if (rateLimitResult) return rateLimitResult;
 
-        // 应用验证中间件
+        // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.CLAIM_CARD);
         const validationResult = await validationMiddleware(request);
         if (validationResult.response) return validationResult.response;
@@ -412,7 +425,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (claimStatusMatch && method === 'GET') {
         const projectId = claimStatusMatch[1];
         const middlewareResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK, RATE_LIMITS.GENERAL)
+          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
         ], request);
         if (middlewareResult) return middlewareResult;
 

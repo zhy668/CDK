@@ -3,18 +3,18 @@
  * Handles super admin operations like user management
  */
 
-import { KVService } from '../kv';
+import { DatabaseService } from '../database';
 
 export class AdminHandler {
-  constructor(private kvService: KVService) {}
+  constructor(private dbService: DatabaseService) {}
 
   /**
    * Get all users
    */
   async getUsers(request: Request): Promise<Response> {
     try {
-      const users = await this.kvService.getAllUsers();
-      
+      const users = await this.dbService.getAllUsers();
+
       // Sort by last login time (most recent first)
       users.sort((a, b) => {
         return new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime();
@@ -32,7 +32,7 @@ export class AdminHandler {
    */
   async getUserStats(request: Request): Promise<Response> {
     try {
-      const stats = await this.kvService.getUserStats();
+      const stats = await this.dbService.getUserStats();
       return this.successResponse(stats);
     } catch (error) {
       console.error('Get user stats error:', error);
@@ -49,12 +49,12 @@ export class AdminHandler {
         return this.errorResponse('用户ID不能为空', 400);
       }
 
-      const user = await this.kvService.getUser(data.userId);
+      const user = await this.dbService.getUser(data.userId);
       if (!user) {
         return this.errorResponse('用户不存在', 404);
       }
 
-      const success = await this.kvService.banUser(data.userId, adminUsername, data.reason);
+      const success = await this.dbService.banUser(data.userId, adminUsername, data.reason);
       
       if (success) {
         return this.successResponse({
@@ -78,12 +78,12 @@ export class AdminHandler {
         return this.errorResponse('用户ID不能为空', 400);
       }
 
-      const user = await this.kvService.getUser(data.userId);
+      const user = await this.dbService.getUser(data.userId);
       if (!user) {
         return this.errorResponse('用户不存在', 404);
       }
 
-      const success = await this.kvService.unbanUser(data.userId);
+      const success = await this.dbService.unbanUser(data.userId);
       
       if (success) {
         return this.successResponse({

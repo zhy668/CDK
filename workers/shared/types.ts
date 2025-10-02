@@ -12,6 +12,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
+  limitOnePerUser: boolean; // 是否限制每个用户只能领取一次
   totalCards: number;
   claimedCards: number;
 }
@@ -21,6 +22,7 @@ export interface CreateProjectRequest {
   password: string;
   adminPassword: string; // 管理密码
   description?: string;
+  limitOnePerUser?: boolean; // 是否限制每个用户只能领取一次，默认 true
   cards: string[];
 }
 
@@ -31,6 +33,7 @@ export interface UpdateProjectRequest {
   newAdminPassword?: string; // 新管理密码（可选）
   description?: string;
   isActive?: boolean;
+  limitOnePerUser?: boolean; // 是否限制每个用户只能领取一次
 }
 
 export interface VerifyAdminPasswordRequest {

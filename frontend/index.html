@@ -101,6 +101,14 @@
                     </div>
 
                     <div class="form-group">
+                        <div class="checkbox-row">
+                            <span class="checkbox-text">限制每个用户只能领取一次</span>
+                            <input type="checkbox" id="limit-one-per-user" checked />
+                        </div>
+                        <small class="form-hint">（开启后，每个用户基于IP和账号只能领取一次）</small>
+                    </div>
+
+                    <div class="form-group">
                         <label for="cards-input">卡密内容 *</label>
                         <div class="cards-input-container">
                             <div class="input-format-tabs">
@@ -253,6 +261,13 @@
                             </label>
                             <span id="project-status-text">项目已启用</span>
                         </div>
+                    </div>
+
+                    <!-- 项目描述 -->
+                    <div class="edit-section">
+                        <h4>项目描述</h4>
+                        <textarea id="edit-project-description" placeholder="请输入项目描述（可选，最多200字符）" maxlength="200" rows="3"></textarea>
+                        <button class="btn btn-primary" onclick="app.updateProjectDescription()">保存描述</button>
                     </div>
 
                     <!-- 卡密管理 -->

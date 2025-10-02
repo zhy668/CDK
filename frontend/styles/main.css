@@ -310,6 +310,43 @@ body {
     cursor: pointer;
 }
 
+.checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.checkbox-inline .checkbox-label {
+    margin: 0;
+}
+
+.checkbox-inline .form-hint {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #f8f9fa;
+}
+
+.checkbox-row .checkbox-text {
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.checkbox-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
 .form-actions {
     display: flex;
     gap: 1rem;

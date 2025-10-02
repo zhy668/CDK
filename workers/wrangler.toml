@@ -14,19 +14,37 @@ routes = [
 [env.development]
 name = "cdk-dev"
 
-# KV Namespaces
-# 注意：请在 Cloudflare Dashboard 中配置 KV 绑定，而不是在这里
-# 1. 创建 KV 命名空间：CDK
+# ============================================
+# D1 Database Configuration (主要数据存储)
+# ============================================
+# 注意：请在 Cloudflare Dashboard 中配置 D1 绑定
+# 1. 创建 D1 数据库：wrangler d1 create cdk-database
+# 2. 初始化数据库：wrangler d1 execute cdk-database --file=./schema.sql
+# 3. 在 Worker Settings → Variables → D1 Database Bindings 中添加绑定
+# 4. Variable name: CDK_DB
+# 5. D1 database: 选择您创建的 cdk-database
+
+# D1 绑定配置 - 命令行部署时需要填入实际ID
+# 界面部署时会自动配置，无需手动填写
+[[d1_databases]]
+binding = "CDK_DB"
+database_name = "cdk-database"
+database_id = "c18d391f-a856-4053-aa70-5dfe0c5c1200"
+
+# ============================================
+# KV Namespace Configuration (Session 存储)
+# ============================================
+# 注意：请在 Cloudflare Dashboard 中配置 KV 绑定
+# 1. 创建 KV 命名空间：CDK_KV (用于 session 存储)
 # 2. 在 Worker Settings → Variables → KV Namespace Bindings 中添加绑定
-# 3. Variable name: CDK
-# 4. KV namespace: 选择您创建的 CDK
+# 3. Variable name: CDK_KV
+# 4. KV namespace: 选择您创建的 CDK_KV
 
 # KV 绑定配置 - 命令行部署时需要填入实际ID
 # 界面部署时会自动配置，无需手动填写
-# [[kv_namespaces]]
-# binding = "CDK"
-# id = "your-actual-kv-namespace-id"
-# preview_id = "your-actual-preview-kv-namespace-id"
+[[kv_namespaces]]
+binding = "CDK_KV"
+id = "32cbb7521d4845b3a8e099dec0c2011f"
 
 # Environment variables
 [vars]

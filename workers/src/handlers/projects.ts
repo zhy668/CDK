@@ -2,12 +2,12 @@
  * Project management API handlers
  */
 
-import { KVService } from '../kv';
+import { DatabaseService } from '../database';
 import { CreateProjectRequest, UpdateProjectRequest, AddCardsRequest, DeleteCardRequest, ToggleProjectStatusRequest, ApiResponse, VALIDATION } from '../../shared/types';
 import { validateProjectName, validateProjectPassword, validateProjectDescription, parseCards, removeDuplicateCards } from '../../shared/utils';
 
 export class ProjectHandler {
-  constructor(private kvService: KVService) {}
+  constructor(private dbService: DatabaseService) {}
 
   async createProject(request: Request, data?: CreateProjectRequest): Promise<Response> {
     try {
@@ -51,12 +51,13 @@ export class ProjectHandler {
 
       // Create project
       console.log('[PROJECT] 开始创建项目对象');
-      const project = await this.kvService.createProject({
+      const project = await this.dbService.createProject({
         name: data!.name.trim(),
         password: data!.password,
         adminPassword: data!.adminPassword,
         description: data!.description?.trim(),
         isActive: true,
+        limitOnePerUser: data!.limitOnePerUser !== false, // 默认为 true
         totalCards: 0,
         claimedCards: 0
       });
@@ -65,7 +66,7 @@ export class ProjectHandler {
       // Add cards to project
       if (cards.length > 0) {
         console.log('[PROJECT] 开始添加卡密到项目');
-        await this.kvService.addCards(project.id, cards);
+        await this.dbService.addCards(project.id, cards);
         project.totalCards = cards.length;
         console.log('[PROJECT] 卡密添加完成');
       }
@@ -85,7 +86,7 @@ export class ProjectHandler {
 
   async getProjects(request: Request): Promise<Response> {
     try {
-      const projects = await this.kvService.getProjects();
+      const projects = await this.dbService.getAllProjects();
       return this.successResponse(projects);
     } catch (error) {
       console.error('Get projects error:', error);
@@ -95,7 +96,7 @@ export class ProjectHandler {
 
   async getProject(request: Request, projectId: string): Promise<Response> {
     try {
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -132,7 +133,7 @@ export class ProjectHandler {
         return this.errorResponse('需要提供管理密码', 400);
       }
 
-      const existingProject = await this.kvService.getProject(projectId);
+      const existingProject = await this.dbService.getProject(projectId);
       if (!existingProject) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -141,7 +142,7 @@ export class ProjectHandler {
         return this.errorResponse('管理密码错误', 401);
       }
 
-      const project = await this.kvService.updateProject(projectId, data!);
+      const project = await this.dbService.updateProject(projectId, data!);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -165,7 +166,7 @@ export class ProjectHandler {
         return this.errorResponse('需要提供管理密码', 400);
       }
 
-      const existingProject = await this.kvService.getProject(projectId);
+      const existingProject = await this.dbService.getProject(projectId);
       if (!existingProject) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -174,7 +175,7 @@ export class ProjectHandler {
         return this.errorResponse('管理密码错误', 401);
       }
 
-      const success = await this.kvService.deleteProject(projectId);
+      const success = await this.dbService.deleteProject(projectId);
       if (!success) {
         return this.errorResponse('删除项目失败', 500);
       }
@@ -197,7 +198,7 @@ export class ProjectHandler {
         return this.errorResponse('项目ID和管理密码不能为空', 400);
       }
 
-      const project = await this.kvService.getProject(data!.projectId);
+      const project = await this.dbService.getProject(data!.projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -226,7 +227,7 @@ export class ProjectHandler {
         return this.errorResponse('需要提供管理密码', 400);
       }
 
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -247,7 +248,7 @@ export class ProjectHandler {
         processedCards = removeDuplicateCards(cards);
       }
 
-      const addedCount = await this.kvService.addCards(projectId, processedCards);
+      const addedCount = await this.dbService.addCards(projectId, processedCards);
 
       return this.successResponse({
         added: addedCount,
@@ -276,7 +277,7 @@ export class ProjectHandler {
         return this.errorResponse('卡密ID不能为空', 400);
       }
 
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -286,7 +287,7 @@ export class ProjectHandler {
       }
 
       // 检查卡密是否已被领取
-      const card = await this.kvService.getCard(projectId, data!.cardId);
+      const card = await this.dbService.getCard(projectId, data!.cardId);
       if (!card) {
         return this.errorResponse('卡密不存在', 404);
       }
@@ -296,7 +297,7 @@ export class ProjectHandler {
       }
 
       // 删除卡密
-      const success = await this.kvService.deleteCard(projectId, data!.cardId);
+      const success = await this.dbService.deleteCard(projectId, data!.cardId);
       if (!success) {
         return this.errorResponse('删除卡密失败', 500);
       }
@@ -325,7 +326,7 @@ export class ProjectHandler {
         return this.errorResponse('isActive必须是布尔值', 400);
       }
 
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -335,7 +336,7 @@ export class ProjectHandler {
       }
 
       // 更新项目状态
-      const updatedProject = await this.kvService.updateProject(projectId, {
+      const updatedProject = await this.dbService.updateProject(projectId, {
         isActive: data!.isActive,
         adminPassword: data!.adminPassword
       });
@@ -364,7 +365,7 @@ export class ProjectHandler {
       }
 
       // 验证项目是否存在
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -375,7 +376,7 @@ export class ProjectHandler {
       }
 
       // 获取统计信息
-      const stats = await this.kvService.getProjectStats(projectId);
+      const stats = await this.dbService.getProjectStats(projectId);
       if (!stats) {
         return this.errorResponse('获取统计信息失败', 500);
       }

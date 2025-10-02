@@ -309,12 +309,16 @@ class CDKApp {
                 }
             }
 
+            // 获取领取限制设置
+            const limitOnePerUser = $('#limit-one-per-user').checked;
+
             // 创建项目
             const projectData = {
                 name,
                 password,
                 adminPassword,
                 description: description || undefined,
+                limitOnePerUser,
                 cards
             };
 
@@ -650,6 +654,10 @@ class CDKApp {
         statusToggle.checked = project.isActive;
         statusText.textContent = project.isActive ? '项目已启用' : '项目已禁用';
 
+        // 设置项目描述
+        const descriptionTextarea = $('#edit-project-description');
+        descriptionTextarea.value = project.description || '';
+
         // 添加状态切换事件
         statusToggle.onchange = async () => {
             await this.toggleProjectStatus(projectId, statusToggle.checked, adminPassword);
@@ -784,6 +792,32 @@ class CDKApp {
             const statusToggle = $('#project-status-toggle');
             statusToggle.checked = !isActive;
             showToast(error.message || '更新项目状态失败', 'error');
+        }
+    }
+
+    async updateProjectDescription() {
+        if (!this.currentEditProject) return;
+
+        const descriptionTextarea = $('#edit-project-description');
+        const newDescription = descriptionTextarea.value.trim();
+        const projectId = this.currentEditProject.id;
+        const adminPassword = this.currentEditProject.adminPassword;
+
+        try {
+            const result = await API.projects.update(projectId, {
+                adminPassword,
+                description: newDescription
+            });
+
+            if (result.success) {
+                showToast('项目描述更新成功', 'success');
+                // 更新当前编辑项目的描述
+                this.currentEditProject.description = newDescription;
+                // 重新加载项目列表
+                await this.loadProjects();
+            }
+        } catch (error) {
+            showToast(error.message || '更新项目描述失败', 'error');
         }
     }
 

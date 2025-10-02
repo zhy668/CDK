@@ -4,7 +4,7 @@
  */
 
 import { SessionService } from '../services/session';
-import { KVService } from '../kv';
+import { DatabaseService } from '../database';
 
 export interface LinuxDoUserInfo {
   id: number;
@@ -33,10 +33,10 @@ export class AuthHandler {
   private readonly AUTH_URL = 'https://connect.linux.do/oauth2/authorize';
   private readonly TOKEN_URL = 'https://connect.linux.do/oauth2/token';
   private readonly USER_INFO_URL = 'https://connect.linux.do/api/user';
-  
+
   constructor(
     private sessionService: SessionService,
-    private kvService: KVService,
+    private dbService: DatabaseService,
     private env: AuthEnv
   ) {}
 
@@ -102,7 +102,7 @@ export class AuthHandler {
       console.log('[AUTH] User authenticated:', userInfo.username);
 
       // Create or update user record
-      await this.kvService.createOrUpdateUser({
+      await this.dbService.createOrUpdateUser({
         userId: userInfo.id.toString(),
         username: userInfo.username,
         name: userInfo.name,
@@ -258,7 +258,7 @@ export class AuthHandler {
     }
 
     // Check if user is banned
-    const user = await this.kvService.getUser(session.userId);
+    const user = await this.dbService.getUser(session.userId);
     if (user && user.isBanned) {
       console.log('[AUTH] Banned user attempted access:', user.username);
       return { valid: false };

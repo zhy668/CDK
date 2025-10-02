@@ -2,12 +2,12 @@
  * Card claim API handlers
  */
 
-import { KVService } from '../kv';
+import { DatabaseService } from '../database';
 import { ClaimRequest, VerifyPasswordRequest, ClaimResponse } from '../../shared/types';
 import { getClientIP, hashIP } from '../../shared/utils';
 
 export class ClaimHandler {
-  constructor(private kvService: KVService, private env: any) {}
+  constructor(private dbService: DatabaseService, private env: any) {}
 
   async verifyPassword(request: Request, data?: VerifyPasswordRequest): Promise<Response> {
     try {
@@ -20,7 +20,7 @@ export class ClaimHandler {
         return this.errorResponse('项目ID和密码不能为空', 400);
       }
 
-      const project = await this.kvService.getProject(data!.projectId);
+      const project = await this.dbService.getProject(data!.projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -90,7 +90,7 @@ export class ClaimHandler {
       const username = session?.username || 'unknown';
 
       // Verify project and password
-      const project = await this.kvService.getProject(data!.projectId);
+      const project = await this.dbService.getProject(data!.projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -103,25 +103,27 @@ export class ClaimHandler {
         return this.errorResponse('密码错误', 401);
       }
 
-      // Check if user has already claimed
-      const existingClaim = await this.kvService.hasUserClaimed(data!.projectId, ipHash);
-      if (existingClaim) {
-        return this.successResponse({
-          success: true,
-          card: existingClaim.cardContent,
-          message: '您已经领取过卡密了',
-          alreadyClaimed: true
-        });
+      // Check if user has already claimed (only if limitOnePerUser is enabled)
+      if (project.limitOnePerUser) {
+        const existingClaim = await this.dbService.hasUserClaimed(data!.projectId, ipHash);
+        if (existingClaim) {
+          return this.successResponse({
+            success: true,
+            card: existingClaim.cardContent,
+            message: '您已经领取过卡密了',
+            alreadyClaimed: true
+          });
+        }
       }
 
       // Get random available card
-      const availableCardId = await this.kvService.getRandomAvailableCard(data!.projectId);
+      const availableCardId = await this.dbService.getRandomAvailableCard(data!.projectId);
       if (!availableCardId) {
         return this.errorResponse('卡密已全部领完', 410);
       }
 
       // Claim the card with username
-      const claimedCard = await this.kvService.claimCard(data!.projectId, availableCardId, ipHash, username);
+      const claimedCard = await this.dbService.claimCard(data!.projectId, availableCardId, ipHash, username);
       if (!claimedCard) {
         return this.errorResponse('领取失败，请重试', 500);
       }
@@ -141,7 +143,7 @@ export class ClaimHandler {
 
   async getClaimStatus(request: Request, projectId: string): Promise<Response> {
     try {
-      const project = await this.kvService.getProject(projectId);
+      const project = await this.dbService.getProject(projectId);
       if (!project) {
         return this.errorResponse('项目不存在', 404);
       }
@@ -151,7 +153,7 @@ export class ClaimHandler {
       const ipHash = await hashIP(clientIP);
 
       // Check if user has claimed
-      const existingClaim = await this.kvService.hasUserClaimed(projectId, ipHash);
+      const existingClaim = await this.dbService.hasUserClaimed(projectId, ipHash);
 
       return this.successResponse({
         hasClaimed: !!existingClaim,
