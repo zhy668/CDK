@@ -26,7 +26,7 @@ export interface CreateSessionParams {
 
 export class SessionService {
   private readonly SESSION_PREFIX = 'session:';
-  private readonly DEFAULT_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+  private readonly DEFAULT_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
 
   constructor(private kv: KVNamespace) {}
 
@@ -66,16 +66,8 @@ export class SessionService {
 
       const sessionData: SessionData = JSON.parse(data);
 
-      // Check if session has expired
-      const now = Date.now();
-      const expiresAt = sessionData.createdAt + (sessionData.expiresIn * 1000);
-
-      if (now > expiresAt) {
-        console.log('[SESSION] Session expired:', sessionId);
-        await this.deleteSession(sessionId);
-        return null;
-      }
-
+      // KV TTL handles expiration automatically, no need for manual check
+      // Just return the session data if it exists in KV
       return sessionData;
     } catch (error) {
       console.error('[SESSION] Error getting session:', error);
@@ -136,24 +128,27 @@ export class SessionService {
       const session = await this.getSession(sessionId);
 
       if (!session) {
+        console.log('[SESSION] Cannot refresh non-existent session:', sessionId);
         return false;
       }
 
       const newExpiresIn = expiresIn || this.DEFAULT_TTL;
       const key = this.getSessionKey(sessionId);
 
-      await this.kv.put(key, JSON.stringify({
+      const updatedSession = {
         ...session,
         expiresIn: newExpiresIn,
         createdAt: Date.now() // Reset creation time
-      }), {
+      };
+
+      await this.kv.put(key, JSON.stringify(updatedSession), {
         expirationTtl: newExpiresIn
       });
 
-      console.log('[SESSION] Refreshed session:', sessionId);
+      console.log('[SESSION] Refreshed session:', sessionId, 'New TTL:', newExpiresIn, 'seconds (', Math.round(newExpiresIn / 86400), 'days)');
       return true;
     } catch (error) {
-      console.error('[SESSION] Error refreshing session:', error);
+      console.error('[SESSION] Error refreshing session:', sessionId, error);
       return false;
     }
   }

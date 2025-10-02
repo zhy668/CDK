@@ -117,7 +117,7 @@ export class AuthHandler {
         avatarUrl: userInfo.avatar_url,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        expiresIn: tokenData.expires_in || 604800 // Default 7 days
+        expiresIn: 30 * 24 * 60 * 60 // 30 days
       });
 
       console.log('[AUTH] Session created:', sessionId);
@@ -213,7 +213,7 @@ export class AuthHandler {
   async handleGetUserInfo(request: Request): Promise<Response> {
     try {
       const sessionId = this.getSessionIdFromRequest(request);
-      
+
       if (!sessionId) {
         return this.errorResponse('未登录', 401);
       }
@@ -223,6 +223,16 @@ export class AuthHandler {
       if (!session) {
         return this.errorResponse('会话已过期', 401);
       }
+
+      // Check if user is banned
+      const user = await this.dbService.getUser(session.userId);
+      if (user && user.isBanned) {
+        console.log('[AUTH] Banned user attempted access:', user.username);
+        return this.errorResponse('账号已被封禁', 403);
+      }
+
+      // Auto-refresh session to extend expiration
+      await this.sessionService.refreshSession(sessionId);
 
       // Check if user is admin
       const adminUsernames = this.env.ADMIN_USERNAMES?.split(',').map(u => u.trim()).filter(u => u) || [];
@@ -263,6 +273,9 @@ export class AuthHandler {
       console.log('[AUTH] Banned user attempted access:', user.username);
       return { valid: false };
     }
+
+    // Auto-refresh session to extend expiration (every access extends the session)
+    await this.sessionService.refreshSession(sessionId);
 
     return { valid: true, session };
   }
@@ -320,7 +333,7 @@ export class AuthHandler {
    * Create session cookie
    */
   private createSessionCookie(sessionId: string): string {
-    const maxAge = 7 * 24 * 60 * 60; // 7 days
+    const maxAge = 30 * 24 * 60 * 60; // 30 days
     return `cdk_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
   }
 
