@@ -260,6 +260,15 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
         currentSession = session;
         console.log('[AUTH] Authenticated user:', session?.username, 'accessing:', path);
+
+        // 将用户信息附加到 request 对象上
+        // @ts-ignore
+        request.user = {
+          userId: session.userId,
+          username: session.username,
+          name: session.name,
+          avatarUrl: session.avatarUrl
+        };
       }
       // ==================== End Session Authentication ====================
 
