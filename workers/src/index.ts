@@ -314,8 +314,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
           ], request);
           if (rateLimitResult) return rateLimitResult;
 
-          // 删除项目需要验证管理密码，所以需要读取请求体
-          return await projectHandler.deleteProject(request, projectId);
+          // 删除项目需要验证管理密码(或管理员权限)，所以需要读取请求体
+          return await projectHandler.deleteProject(request, projectId, undefined, env);
         }
       }
 

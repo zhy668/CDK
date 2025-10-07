@@ -831,15 +831,29 @@ class CDKApp {
         const project = this.projects.find(p => p.id === projectId);
         if (!project) return;
 
-        // 先询问管理密码
-        const adminPassword = prompt(`请输入项目 "${project.name}" 的管理密码：`);
-        if (!adminPassword) {
-            return; // 用户取消
+        // 检查是否为系统管理员
+        const isAdmin = window.AuthManager && window.AuthManager.checkIsAdmin();
+        let adminPassword = null;
+
+        // 如果不是系统管理员,需要输入管理密码
+        if (!isAdmin) {
+            adminPassword = prompt(`请输入项目 "${project.name}" 的管理密码：`);
+            if (!adminPassword) {
+                return; // 用户取消
+            }
         }
 
-        if (confirm(`确定要删除项目 "${project.name}" 吗？此操作不可恢复。`)) {
+        // 确认删除操作
+        const confirmMessage = isAdmin
+            ? `确定要删除项目 "${project.name}" 吗？此操作不可恢复。\n\n(您正在以系统管理员身份删除)`
+            : `确定要删除项目 "${project.name}" 吗？此操作不可恢复。`;
+
+        if (confirm(confirmMessage)) {
             try {
-                const result = await API.projects.delete(projectId, { adminPassword });
+                // 构建请求数据
+                const deleteData = adminPassword ? { adminPassword } : {};
+
+                const result = await API.projects.delete(projectId, deleteData);
                 if (result.success) {
                     showToast('项目删除成功', 'success');
                     this.loadProjects();

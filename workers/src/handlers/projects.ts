@@ -154,16 +154,26 @@ export class ProjectHandler {
     }
   }
 
-  async deleteProject(request: Request, projectId: string, data?: any): Promise<Response> {
+  async deleteProject(request: Request, projectId: string, data?: any, env?: any): Promise<Response> {
     try {
       // 如果没有预解析的数据，则从请求中读取
       if (!data) {
-        data = await request.json();
+        try {
+          data = await request.json();
+        } catch {
+          data = {};
+        }
       }
 
-      // 验证管理密码
-      if (!data!.adminPassword) {
-        return this.errorResponse('需要提供管理密码', 400);
+      // 检查是否为系统管理员
+      // @ts-ignore - request.user is added by auth middleware
+      const currentUser = request.user;
+      let isAdmin = false;
+
+      if (currentUser && env) {
+        const adminUsernames = env.ADMIN_USERNAMES?.split(',').map((u: string) => u.trim()).filter((u: string) => u) || [];
+        isAdmin = adminUsernames.includes(currentUser.username);
+        console.log('[PROJECT] Delete request - User:', currentUser.username, 'IsAdmin:', isAdmin);
       }
 
       const existingProject = await this.dbService.getProject(projectId);
@@ -171,8 +181,17 @@ export class ProjectHandler {
         return this.errorResponse('项目不存在', 404);
       }
 
-      if (existingProject.adminPassword !== data!.adminPassword) {
-        return this.errorResponse('管理密码错误', 401);
+      // 如果不是系统管理员,需要验证管理密码
+      if (!isAdmin) {
+        if (!data!.adminPassword) {
+          return this.errorResponse('需要提供管理密码', 400);
+        }
+
+        if (existingProject.adminPassword !== data!.adminPassword) {
+          return this.errorResponse('管理密码错误', 401);
+        }
+      } else {
+        console.log('[PROJECT] Admin user deleting project without password verification');
       }
 
       const success = await this.dbService.deleteProject(projectId);
