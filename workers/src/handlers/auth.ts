@@ -120,14 +120,23 @@ export class AuthHandler {
         expiresIn: 30 * 24 * 60 * 60 // 30 days
       });
 
-      console.log('[AUTH] Session created:', sessionId);
+      console.log('[AUTH] Session created successfully:', {
+        sessionId,
+        userId: userInfo.id,
+        username: userInfo.username,
+        redirectTo: state || '/'
+      });
 
       // Set session cookie and redirect to home
       return this.redirectToHome(sessionId, state);
 
     } catch (error) {
-      console.error('[AUTH] Callback error:', error);
-      return this.redirectToLogin('认证过程出错');
+      console.error('[AUTH] Callback error:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        redirect_uri: this.env.LINUXDO_REDIRECT_URI
+      });
+      return this.redirectToLogin(`认证过程出错: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }
 
@@ -135,6 +144,8 @@ export class AuthHandler {
    * Exchange authorization code for access token
    */
   private async exchangeCodeForToken(code: string): Promise<OAuthTokenResponse> {
+    console.log('[AUTH] Exchanging code for token, redirect_uri:', this.env.LINUXDO_REDIRECT_URI);
+
     const response = await fetch(this.TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -151,11 +162,18 @@ export class AuthHandler {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[AUTH] Token exchange failed:', response.status, errorText);
-      throw new Error(`Token exchange failed: ${response.status}`);
+      console.error('[AUTH] Token exchange failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        redirect_uri: this.env.LINUXDO_REDIRECT_URI
+      });
+      throw new Error(`Token exchange failed: ${response.status} - ${errorText}`);
     }
 
-    return await response.json();
+    const tokenData: OAuthTokenResponse = await response.json();
+    console.log('[AUTH] Token exchange successful, has_access_token:', !!tokenData.access_token);
+    return tokenData;
   }
 
   /**
@@ -332,17 +350,24 @@ export class AuthHandler {
 
   /**
    * Create session cookie
+   * Using SameSite=None to support cross-site OAuth callback
    */
   private createSessionCookie(sessionId: string): string {
     const maxAge = 30 * 24 * 60 * 60; // 30 days
-    return `cdk_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+    const cookie = `cdk_session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}`;
+    console.log('[AUTH] Creating session cookie:', {
+      sessionId: sessionId.substring(0, 10) + '...',
+      maxAge,
+      sameSite: 'None'
+    });
+    return cookie;
   }
 
   /**
    * Clear session cookie
    */
   private clearSessionCookie(): string {
-    return 'cdk_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+    return 'cdk_session=; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=0';
   }
 
   /**
