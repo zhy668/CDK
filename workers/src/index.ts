@@ -8,7 +8,6 @@ import { ClaimHandler } from './handlers/claim';
 import { AuthHandler } from './handlers/auth';
 import { AdminHandler } from './handlers/admin';
 import { SessionService } from './services/session';
-import { createRateLimitMiddleware, RATE_LIMITS } from './middleware/rateLimit';
 import { createValidationMiddleware, VALIDATION_SCHEMAS } from './middleware/validation';
 import { createAuthMiddleware, createCorsMiddleware, createSecurityMiddleware, createSessionAuthMiddleware } from './middleware/auth';
 import { createTurnstileMiddleware, getTurnstileConfig } from './middleware/turnstile';
@@ -275,12 +274,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       // Project management routes
       if (path === '/api/projects') {
         if (method === 'GET') {
-          // 应用通用限制
-          const middlewareResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-          ], request);
-          if (middlewareResult) return middlewareResult;
-
           return await projectHandler.getProjects(request);
         } else if (method === 'POST') {
           // 创建项目：只需要数据验证，不需�?Turnstile 验证
@@ -297,19 +290,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (projectMatch) {
         const projectId = projectMatch[1];
         if (method === 'GET') {
-          const middlewareResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-          ], request);
-          if (middlewareResult) return middlewareResult;
-
           return await projectHandler.getProject(request, projectId);
         } else if (method === 'PUT') {
-          // 应用限制
-          const rateLimitResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-          ], request);
-          if (rateLimitResult) return rateLimitResult;
-
           // 应用验证中间�?
           const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.UPDATE_PROJECT);
           const validationResult = await validationMiddleware(request);
@@ -317,12 +299,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
           return await projectHandler.updateProject(request, projectId, validationResult.data);
         } else if (method === 'DELETE') {
-          // 应用限制
-          const rateLimitResult = await applyMiddleware([
-            createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-          ], request);
-          if (rateLimitResult) return rateLimitResult;
-
           // 删除项目需要验证管理密码(或管理员权限)，所以需要读取请求体
           return await projectHandler.deleteProject(request, projectId, undefined, env);
         }
@@ -332,12 +308,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       const cardsMatch = path.match(/^\/api\/projects\/([^\/]+)\/cards$/);
       if (cardsMatch && method === 'POST') {
         const projectId = cardsMatch[1];
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.ADD_CARDS);
         const validationResult = await validationMiddleware(request);
@@ -351,12 +321,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       if (deleteCardMatch && method === 'DELETE') {
         const projectId = deleteCardMatch[1];
         const cardId = deleteCardMatch[2];
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         // 从请求体中读取管理密�?
         const data = await request.json() as any;
         return await projectHandler.deleteCard(request, projectId, { ...data, cardId });
@@ -366,12 +330,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       const toggleStatusMatch = path.match(/^\/api\/projects\/([^\/]+)\/toggle-status$/);
       if (toggleStatusMatch && method === 'POST') {
         const projectId = toggleStatusMatch[1];
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         return await projectHandler.toggleProjectStatus(request, projectId);
       }
 
@@ -379,33 +337,16 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       const statsMatch = path.match(/^\/api\/projects\/([^\/]+)\/stats$/);
       if (statsMatch && method === 'POST') {
         const projectId = statsMatch[1];
-        const middlewareResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-        ], request);
-        if (middlewareResult) return middlewareResult;
-
         return await projectHandler.getProjectStats(request, projectId);
       }
 
       // Admin password verification route
       if (path === '/api/verify-admin' && method === 'POST') {
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.PASSWORD_VERIFY)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         return await projectHandler.verifyAdminPassword(request);
       }
 
       // Claim routes
       if (path === '/api/verify' && method === 'POST') {
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.PASSWORD_VERIFY)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.VERIFY_PASSWORD);
         const validationResult = await validationMiddleware(request);
@@ -415,12 +356,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       }
 
       if (path === '/api/claim' && method === 'POST') {
-        // 应用限制
-        const rateLimitResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.CLAIM_CARD)
-        ], request);
-        if (rateLimitResult) return rateLimitResult;
-
         // 应用验证中间�?
         const validationMiddleware = createValidationMiddleware(VALIDATION_SCHEMAS.CLAIM_CARD);
         const validationResult = await validationMiddleware(request);
@@ -433,11 +368,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       const claimStatusMatch = path.match(/^\/api\/claim\/([^\/]+)$/);
       if (claimStatusMatch && method === 'GET') {
         const projectId = claimStatusMatch[1];
-        const middlewareResult = await applyMiddleware([
-          createRateLimitMiddleware(env.CDK_KV, RATE_LIMITS.GENERAL)
-        ], request);
-        if (middlewareResult) return middlewareResult;
-
         return await claimHandler.getClaimStatus(request, projectId);
       }
 
