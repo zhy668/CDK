@@ -11,8 +11,28 @@ routes = [
   { pattern = "5466888.xyz/*", zone_name = "5466888.xyz" }
 ]
 
+# Production environment bindings
+[[env.production.d1_databases]]
+binding = "CDK_DB"
+database_name = "cdk-database"
+database_id = "c18d391f-a856-4053-aa70-5dfe0c5c1200"
+
+[[env.production.kv_namespaces]]
+binding = "CDK_KV"
+id = "32cbb7521d4845b3a8e099dec0c2011f"
+
 [env.development]
 name = "cdk-dev"
+
+# Development environment bindings
+[[env.development.d1_databases]]
+binding = "CDK_DB"
+database_name = "cdk-database"
+database_id = "c18d391f-a856-4053-aa70-5dfe0c5c1200"
+
+[[env.development.kv_namespaces]]
+binding = "CDK_KV"
+id = "32cbb7521d4845b3a8e099dec0c2011f"
 
 # ============================================
 # D1 Database Configuration (主要数据存储)
