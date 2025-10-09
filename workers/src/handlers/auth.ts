@@ -231,8 +231,8 @@ export class AuthHandler {
         return this.errorResponse('账号已被封禁', 403);
       }
 
-      // Auto-refresh session to extend expiration
-      await this.sessionService.refreshSession(sessionId);
+      // Session auto-refresh disabled to reduce KV writes
+      // await this.sessionService.refreshSession(sessionId);
 
       // Check if user is admin
       const adminUsernames = this.env.ADMIN_USERNAMES?.split(',').map(u => u.trim()).filter(u => u) || [];
@@ -274,8 +274,9 @@ export class AuthHandler {
       return { valid: false };
     }
 
-    // Auto-refresh session to extend expiration (every access extends the session)
-    await this.sessionService.refreshSession(sessionId);
+    // Session auto-refresh disabled to reduce KV writes
+    // Session will expire after 30 days regardless of activity
+    // await this.sessionService.refreshSession(sessionId);
 
     return { valid: true, session };
   }

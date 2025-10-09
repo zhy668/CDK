@@ -145,17 +145,7 @@ export interface ApiResponse<T = any> {
   message?: string;
 }
 
-// KV Storage keys structure
-export const KV_KEYS = {
-  PROJECT: (id: string) => `project:${id}`,
-  CARD: (projectId: string, cardId: string) => `card:${projectId}:${cardId}`,
-  CLAIM: (projectId: string, ipHash: string) => `claim:${projectId}:${ipHash}`,
-  PROJECT_CARDS: (projectId: string) => `cards:${projectId}`,
-  PROJECT_STATS: (projectId: string) => `stats:${projectId}`,
-  PROJECT_LIST: 'projects:list',
-  USER: (userId: string) => `user:${userId}`,
-  USER_LIST: 'users:list'
-} as const;
+// KV_KEYS removed - migrated to D1 database
 
 // Validation constants
 export const VALIDATION = {
