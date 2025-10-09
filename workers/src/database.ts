@@ -286,8 +286,8 @@ export class DatabaseService {
     const user: User = {
       userId: userData.userId,
       username: userData.username,
-      name: userData.name || undefined,
-      avatarUrl: userData.avatarUrl || undefined,
+      name: userData.name,
+      avatarUrl: userData.avatarUrl,
       isBanned: existingUser?.isBanned || false,
       bannedAt: existingUser?.bannedAt,
       bannedBy: existingUser?.bannedBy,
@@ -299,16 +299,16 @@ export class DatabaseService {
     if (existingUser) {
       // 更新现有用户
       await this.db.prepare(`
-        UPDATE users 
+        UPDATE users
         SET username = ?, name = ?, avatar_url = ?, last_login_at = ?
         WHERE user_id = ?
-      `).bind(user.username, user.name, user.avatarUrl, user.lastLoginAt, user.userId).run();
+      `).bind(user.username, user.name || null, user.avatarUrl || null, user.lastLoginAt, user.userId).run();
     } else {
       // 创建新用户
       await this.db.prepare(`
         INSERT INTO users (user_id, username, name, avatar_url, is_banned, created_at, last_login_at)
         VALUES (?, ?, ?, ?, 0, ?, ?)
-      `).bind(user.userId, user.username, user.name, user.avatarUrl, user.createdAt, user.lastLoginAt).run();
+      `).bind(user.userId, user.username, user.name || null, user.avatarUrl || null, user.createdAt, user.lastLoginAt).run();
     }
 
     return user;
